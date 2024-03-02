@@ -6,18 +6,17 @@ library(shiny)
 library(tidyverse)
 library(scico)
 library(ggpubr)
-library(here)
 
 # for the shinylive app, load the Bioconductor ComplexHeatmap package from app Rlibs
 # shinylive normally only uses CRAN libraries
-.libPaths(c(here("app", "Rlibs"), .libPaths()))
+.libPaths(c("./Rlibs", .libPaths()))
 library(ComplexHeatmap)
 
 # source custom functions
-source(here("src", "functions.R"))
+source("./functions.R")
 
 # load data
-source(here("src", "load_app_data.R"))
+source("./load_app_data.R")
 
 #####  Define the ui #####
 ui <- fluidPage(
@@ -31,9 +30,6 @@ ui <- fluidPage(
   
   h2("Get started:"),
   helpText("Query the gene expression of a gene of interest. Type the gene name or use the drop down menu."),
-  
-  # # Input name of gene to query its gene expression
-  # autocomplete_list <- read_rds(here("data", "autocomplete_list.RDS")),
   
   selectizeInput(
     inputId = 'gene',
@@ -90,15 +86,18 @@ server <- function(input, output) {
       str_glue("{input$gene}_expression_vs_mutations_heatmap.png")
     },
     content = function(filename) {
-      ggsave(plot = plot_heatmap_for_expr_gene(input$gene), filename = filename, width = 14, height = 7, dpi = 600)
+      png(filename = filename, width = 14, height = 7, units = "in", res = 600)
+      plot_heatmap_for_expr_gene(input$gene)
+      dev.off()
     })
   
+  # the width of the downloaded plot is scaled by the number of facets (see functions.R for generation of n_facets)
   output$download_boxplots <- downloadHandler(
     filename = function() {
       str_glue("{input$gene}_significant_results_boxplots.png")
     },
     content = function(filename) {
-      ggsave(plot = plot_boxplot_of_signif(input$gene), filename = filename, width = 14, height = 7, dpi = 600)
+      ggsave(plot = plot_boxplot_of_signif(input$gene), filename = filename, width = eval(5+1.2*n_facets), height = 7, dpi = 600)
     })
 
 }

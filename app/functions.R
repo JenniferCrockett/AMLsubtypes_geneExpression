@@ -156,7 +156,14 @@ plot_heatmap_for_expr_gene <- function(gene) {
   }
 
 
-# Boxplot function 
+# Boxplot function
+# PARAMS:
+## gene: the name of the gene of interest in the gene expression dataframe
+# RETURNS:
+## 1. One boxplot facet for each genetic subtype where a significant effect was observed in the heatmap,
+## where expression of the gene of interest is plotted in unmutated and mutated patient groups for each subtype.
+## 2. A global environment variable called "n_facets" is exported, which will be used for scaling the size 
+## of downloaded plots.
 plot_boxplot_of_signif <- function(gene) {
   expr_name <- str_glue("{gene}.log2RPKM")
     
@@ -213,5 +220,12 @@ plot_boxplot_of_signif <- function(gene) {
       theme_light(base_size = 22) +
       theme(axis.text.x = element_blank())
     
+    ## if there are > 10 facets, then shrink the font size of the facet label to avoid crowding
+    n_facets <<- ncol(stat_results[gene,signif_effects]) # the `<<-` operator exports a global environment variable
+    if (n_facets > 10) {
+      p <- p +
+        theme(strip.text = element_text(size = 14))
+    }
+    
     print(p)
-  }
+}
