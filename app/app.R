@@ -1,14 +1,17 @@
 # ui, server, and run code for the AMLsubtypes_geneExpression Shiny App 
 
-# ----- Setup libraries and custom functions -----
+##### Setup libraries and custom functions #####
 
 library(shiny)
 library(tidyverse)
 library(scico)
-library(ComplexHeatmap)
 library(ggpubr)
 library(here)
 
+# for the shinylive app, load the Bioconductor ComplexHeatmap package from app Rlibs
+# shinylive normally only uses CRAN libraries
+.libPaths(c(here("app", "Rlibs"), .libPaths()))
+library(ComplexHeatmap)
 
 # source custom functions
 source(here("src", "functions.R"))
@@ -16,7 +19,7 @@ source(here("src", "functions.R"))
 # load data
 source(here("src", "load_app_data.R"))
 
-# ----- Define the ui -----
+#####  Define the ui #####
 ui <- fluidPage(
   
   # Application title
@@ -64,7 +67,7 @@ ui <- fluidPage(
   
 )
 
-# ----- Define the server logic -----
+##### Define the server logic ##### 
 
 server <- function(input, output) {
   
@@ -101,6 +104,6 @@ server <- function(input, output) {
 }
 
 
-# ----- Run the Shiny App -----
+##### Run the Shiny App #####
 
 shinyApp(ui = ui, server = server)
