@@ -1,0 +1,377 @@
+---
+title: "Data preparation for Shiny Dashboard"
+author: "Jennifer Crockett (copyright 2024)"
+date: "2024-02-23"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 7, fig.height = 5, cache.path = "cache/")
+library(tidyverse)
+library(readxl)
+library(here)
+library(lemon)
+
+knit_print.data.frame <- lemon_print # table rendering
+
+# source custom functions
+source(here("app", "functions.R"))
+```
+
+# Background
+
+## Purpose
+
+Acute Myeliod Leukemia (AML) is a type of blood cancer. There are many known genetic mutations associated with AML, which define genetic subtypes of this disease. Increasing our understanding these genetic subtypes can help us to develop better treatments for AML. Researchers often want to know if a gene is active or inactive in a genetic subtype of AML. For example, a gene that is turned on highly in a particular genetic subtype could be a new drug-target to treat that AML subtype. 
+
+Here I will develop a Shiny App that allows researchers to query a gene and see if it is active or inactive in the various genetic subtypes of AML defined by common mutations.
+
+# Data acquisition
+
+In this report, I will prepare the data for the Shiny App. The source of the data is the Oregon Health & Science University (OHSU) Beat AML dataset, a very large collection of AML patient data including RNA-seq gene expression data (quantitative data about how "on" or "off" a gene is) and genetic mutation data (to define genetic subtypes of AML). For more information, see the Beat AML dataset publication by [Bottomly _et al._ (2022)](https://www.cell.com/cancer-cell/fulltext/S1535-6108(22)00312-9).
+
+
+## Download
+
+The Beat AML data was downloaded from the following public resource: https://biodev.github.io/BeatAML2/  
+
+* Downloaded the following files to `./data/` directory of this R project:
+  - Clinical Summary
+  - Normalized Expression
+    - RPKM normalization was performed ([see this resource for more information](https://hbctraining.github.io/DGE_workshop/lessons/02_DGE_count_normalization.html))
+    - log2 scale
+  - WES/targeted Sequencing Mutation Calls
+
+## Load
+
+RNA-seq gene expression data:
+
+```{r}
+rna <- read_delim(here("raw_data", "beataml_waves1to4_norm_exp_dbgap.txt"), delim = "\t", show_col_types = F)
+
+# dimensions of dataset
+dim(rna)
+```
+
+```{r render=lemon_print}
+# preview the data
+rna[1:5,1:8]
+```
+
+
+Genetic mutation data:
+
+```{r}
+mut <- read_delim(here("raw_data", "beataml_wes_wv1to4_mutations_dbgap.txt") , delim = "\t", show_col_types = F)
+
+# dimensions of dataset
+dim(mut)
+```
+
+```{r render=lemon_print}
+# preview the data
+mut[1:5,1:20]
+```
+
+Clinical metadata:
+
+```{r}
+meta <- read_xlsx(here("raw_data", "beataml_wv1to4_clinical.xlsx"))
+
+# dimensions of metadata
+dim(meta)
+```
+
+```{r render=lemon_print, eval=FALSE}
+# preview the data
+# only for interactive viewing purposes, not run in the knitted html report
+meta[1:5,1:5]
+```
+
+```{r eval=FALSE}
+# available metadata columns
+# only for interactive viewing purposes, not run in the knitted html report
+colnames(meta)
+```
+
+# Data preparation
+
+* The Shiny App will need the following extracted and transformed datasets:
+  - Gene expression data where each row is a gene, each column is a patient sample, and each value is the normalized expression value
+    - Filtered to remove genes with very low values across the majority of patients. Because these genes are near the limit of detection for the RNA-seq gene expression quantification method, the measurement of these genes will be low accuracy.
+    - Filter to remove genes with low variance. These genes will not exhibit large changes between patients, so they are less likely to provide reproducible results (e.g. reproducing the result in a lab validation experiment) when it comes to differences in gene expression between genetic subtype groups of AML.
+  - Gene expression data derived from the filtered dataset above, where each value is transformed to the Z-scaled expression
+  - Genetic mutation data where each row is a patient, each column is a potentially mutated gene, and each value is 0 (no mutation present in patient) or 1 (mutation present in patient)
+    - Filtered to remove genes that are mutated in very few patients, as these will not have enough "mutated" vs. "unmutated" patients for statistical testing
+      - The patients in each of these datasets will be identical, in the same order. For this, RNA gene expression data IDs and genetic mutation data IDs will need to be converted to patient IDs.
+
+## ID conversion
+
+Use the metadata to create a conversion table between gene expression analysis IDs and genetic mutation analysis IDs. We want only the patients that have both types of data for this analysis:
+
+```{r}
+id_conversion <- select(meta, starts_with("dbgap_")) %>%
+  filter(!is.na(dbgap_dnaseq_sample), !is.na(dbgap_rnaseq_sample)) %>%
+  filter(dbgap_dnaseq_sample %in% mut$dbgap_sample_id, dbgap_rnaseq_sample %in% colnames(rna)) %>%
+  mutate(patient_id = paste0("P", dbgap_subject_id)) %>% # make patient ID that doesn't start with a numeric symbol, for colnames later
+  select(patient_id, mut_data_id = dbgap_dnaseq_sample, rna_data_id = dbgap_rnaseq_sample)
+
+# number of patients
+(n_patients <- nrow(id_conversion))
+```
+
+
+```{r render=lemon_print}
+# check that the data manipulation worked as expected
+head(id_conversion, 5)
+```
+
+## Gene expression
+
+Filter to protein-coding genes only (i.e. genes that produce a protein product, not a non-coding RNA), and remove uncharacterized proteins:
+
+```{r}
+rna <- filter(rna, biotype == "protein_coding", !str_detect(display_label, "\\."), !str_detect(display_label, "C\\d+orf\\d+"), !str_detect(display_label, "-"))
+```
+
+
+Extract the required row and column format from the raw data (values in these data are the log2 normalized expression values). Retain only the patients in the ID conversion table generated above:
+
+```{r render=lemon_print}
+rna_normexp <- select(rna, gene = display_label, all_of(id_conversion$rna_data_id))
+
+# ensure no duplicate gene names, as setting gene names to rownames in the next step requires unique values
+stopifnot(!any(duplicated(rna_normexp$gene)))
+# set gene names to rownames
+rna_normexp <- column_to_rownames(rna_normexp, "gene")
+
+# convert column names to patient ID
+# check that patients are in the same order in the rna_normexp df and the id_conversion df before performing the conversion
+if (identical(colnames(rna_normexp), id_conversion$rna_data_id, attrib.as.set = F)) {
+  colnames(rna_normexp) <- id_conversion$patient_id
+} else {
+  stop("Column names are not in the same order! Fix it before performing colname conversion.")
+}
+
+# sort the patients by their ID number
+patient_order <- sort(colnames(rna_normexp))
+rna_normexp <- rna_normexp[,patient_order]
+
+# sort the genes in alphabetical order
+rna_normexp <- rna_normexp[sort(rownames(rna_normexp)),]
+
+# check that the number of patient samples in this dataframe meets expectations
+stopifnot(ncol(rna_normexp) == n_patients)
+
+# check that the data extraction worked as expected
+rna_normexp[1:5,1:5]
+```
+
+Filtering to remove genes with low gene expression values across patients:
+
+```{r histogram_log2_normalized_expression}
+# quick visualization of distribution of the RNA log2 normalized expression values
+RNA_log2_normalized_expression <- unlist(rna_normexp)
+hist(RNA_log2_normalized_expression)
+```
+
+
+```{r}
+# set cutoffs (see written description in the bullet point below)
+(thresh <- 2) # minimum value threshold
+(frac <- 0.99) # minimum fraction of patients
+
+# apply cutoffs
+keep <- rowSums(rna_normexp > thresh) > frac*ncol(rna_normexp)
+rna_normexp_filt <- rna_normexp[keep,]
+```
+
+* Description of filtering cutoff applied to remove lowly expressed genes: 
+  - require log2(normalized expression value) > `r thresh` (i.e. normalized expression value > `r 2^thresh`) in more than `r frac*100`% of patients
+
+```{r}
+# dimensions of filtered data
+dim(rna_normexp_filt)
+```
+
+Filtering to remove genes with low variance (low standard deviation) across patients:
+
+```{r histogram_variance_in_expression}
+# quick visualization of distribution of the standard deviations
+# for the remaining genes after the previous filtering step
+row_sds <- apply(rna_normexp_filt, 1, sd)
+
+RNA_standard_deviation <- unlist(row_sds)
+hist(log2(RNA_standard_deviation))
+```
+
+
+```{r}
+# set cutoffs (see written description in the bullet point below)
+sd_thresh <- 1
+
+# apply cutoffs
+keep <- row_sds > sd_thresh
+rna_normexp_filt <- rna_normexp_filt[keep,]
+```
+
+* Description of filtering cutoff applied to remove low variance genes: 
+  - require standard deviation of the gene's RNA expression values > `r sd_thresh`
+  
+```{r}
+# dimensions of the re-filtered data
+dim(rna_normexp_filt)
+```
+
+Generate Z-scaled expression for each filtered gene:
+
+```{r render=lemon_print}
+# z-scale each row
+rna_zscaled_filt <- t(apply(rna_normexp_filt, 1, base::scale)) %>%
+  as.data.frame()
+
+colnames(rna_zscaled_filt) <- colnames(rna_normexp_filt)
+
+# check the format of the scaled data
+rna_zscaled_filt[1:5,1:5]
+```
+
+## Genetic mutations
+
+Filter to samples that are in the ID conversion table, then convert sample IDs to patient IDs:
+
+```{r}
+mut <- filter(mut, dbgap_sample_id %in% id_conversion$mut_data_id) %>%
+  left_join(select(id_conversion, mut_data_id, patient_id), by = c("dbgap_sample_id" = "mut_data_id"))
+
+# check that the number of patients meets expectations
+stopifnot(length(unique(mut$dbgap_sample_id)) == n_patients)
+```
+
+Data validity: check the range of "tumor variant allele frequency" (VAF, column `t_vaf`) values, which describes the fraction of mutated reads vs. unmutated reads detected in the cellular mixture. We expect VAF values to be between 5% (typical limit of detection, although higher cutoffs are sometimes applied depending on the study design) and 100% (all reads contain the mutation).
+
+```{r}
+range(mut$t_vaf)
+
+# assumption checking
+stopifnot(min(mut$t_vaf) > 0.05)
+stopifnot(max(mut$t_vaf) <= 1)
+```
+
+Filter to remove genes that are mutated in very few patients:
+
+```{r}
+# number of mutated patients per gene
+# we will only count each patient once, even if they have more than one mutation present in a particular gene
+n_mut_pts_per_gene <- distinct(mut, dbgap_sample_id, symbol) %>%
+  dplyr::count(symbol)
+
+# set cutoff
+min_frac_pts <- 0.05 # minimum fraction of patients in the cohort with mutation
+(min_n_muts <- ceiling(min_frac_pts*n_patients)) # minimum number of mutations in cohort required (round up to nearest integer)
+
+# apply cutoff
+genetic_subtypes <- filter(n_mut_pts_per_gene, n >= min_n_muts) %>%
+  pull(symbol) %>%
+  sort()
+
+# view the list of mutated genes we will be studying
+genetic_subtypes
+```
+
+* Filtering cutoffs applied here: require that the mutation is detected in at least `r min_frac_pts*100`% of patients in the cohort (n = `r n_patients`), i.e. `r min_n_muts` patients have the mutation
+
+Extract the required row and column format from the raw data, and put the patients in the same order as the gene expression data:
+
+```{r render=lemon_print}
+mut_matrix <- select(mut, patient_id, gene = symbol) %>%
+  filter(gene %in% genetic_subtypes) %>%
+  distinct() %>%
+  mutate(dummy = 1) %>% # this dummy column will fill in a 1 when a mutation is present in a given patient
+  pivot_wider(id_cols = patient_id, names_from = gene, values_from = dummy, values_fill = 0) %>%
+  column_to_rownames("patient_id")
+
+# put the genes in alphabetical order
+mut_matrix <- mut_matrix[,genetic_subtypes]
+
+# check that the extraction format is correct
+mut_matrix[1:5,1:5]
+```
+
+
+Fill in missing patients. There are patients who did not contain mutations in any of these genes of interest, so we must fill them in as zeros:
+
+```{r}
+unmut_df <- data.frame(patient_id = setdiff(colnames(rna_normexp_filt), rownames(mut_matrix)))
+
+for (i in colnames(mut_matrix)) {
+  unmut_df[,i] <- 0
+}
+
+unmut_df <- column_to_rownames(unmut_df, "patient_id")
+
+# now add the unmutated patients to the mutated patients matrix
+mut_matrix_all <- bind_rows(mut_matrix, unmut_df)
+
+# put the patients in the same order as the RNA gene expression data
+# first check that all patients are present
+if(setequal(rownames(mut_matrix_all), colnames(rna_normexp_filt))) {
+  mut_matrix_all <- mut_matrix_all[patient_order,]
+} else {
+  stop("Patient set is not in the same as the RNA data! Fix before reordering patients.")
+}
+
+# check that the order of patients is identical
+stopifnot(identical(rownames(mut_matrix_all), colnames(rna_normexp_filt), attrib.as.set = F))
+```
+
+
+# Statistical testing
+
+To address the question outlined in the _Purpose_ section, the Shiny App will need to perform the following statistical test: For each gene in the gene expression dataset (n = `r nrow(rna_normexp_filt)` genes), compare the Z-scaled expression in mutated patients vs. unmutated patients for each genetic subtype in the mutation dataset (n = `r ncol(mut_matrix_all)` genetic subytpes).
+
+* Output layout: rows are the genes in the gene expression dataset, columns are the genetic subtypes, values are the p-values for expression in mutated vs. unmutated patients for the genetic subtyping
+* Statistical test: Mann-Whitney-U test (non-parametric test for unpaired data)
+* Multiple hypothesis testing correction: Apply FDR correction of p-values after testing for differences in gene-of-interest expression in all `r ncol(mut_matrix_all)` genetic subtypes
+  - FDR correction is performed by row, because a researcher would be querying one gene from the gene expression dataset and seeing in which genetic subtypes the expression differs based on mutation status
+* (Performing all the tests here will make it so the Shiny App doesn't have to spend time calculating these values on the fly)
+
+```{r}
+# iterate over the genes (rows) in the rna_zscaled_filt gene expression object
+for (j in 1:nrow(rna_zscaled_filt)) {
+  this_gene <- rownames(rna_zscaled_filt[j,])
+  this_stat <- test_gene_expr_in_subtypes(this_gene)
+  
+  if (j == 1) {
+    stat_results <- this_stat
+  } else {
+    stat_results <- bind_rows(stat_results, this_stat)
+  }
+}
+```
+
+```{r}
+# check that all genes in the gene expression dataset have been tested
+stopifnot(setequal(rownames(rna_zscaled_filt), rownames(stat_results)))
+```
+
+
+# Save results
+
+Save the results of this data preparation, to be used in the Shiny App:
+
+```{r}
+write_rds(rna_normexp_filt, here("app", "data", "rna_normexp_filt.RDS"))
+write_rds(rna_zscaled_filt, here("app", "data", "rna_zscaled_filt.RDS"))
+write_rds(mut_matrix_all, here("app", "data", "mut_matrix_all.RDS"))
+write_rds(stat_results, here("app", "data", "stat_results_mann_whitney_padj.RDS"))
+```
+
+```{r}
+# save an "autocomplete list" of all the gene names that can be queried
+write_rds(rownames(rna_normexp_filt), here("app", "data", "autocomplete_list.RDS"))
+```
+
