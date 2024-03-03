@@ -136,7 +136,7 @@ plot_heatmap_for_expr_gene <- function(gene) {
   expr_anno@name <- expr_name
   
   ## title and legend
-  column_title = str_glue("BeatAML: {gene} Z-scaled expression vs. Common mutations\n(n = {ncol(to_plot)} patients)")
+  column_title = str_glue("{gene} Z-scaled expression vs. Common AML mutations\n(BeatAML dataset, n = {ncol(to_plot)} patients)")
   heatmap_legend_param = list(title = "Status", at = c("Unmutated", "Mutated"), 
                               labels = c("Unmutated", "Mutated"), title_position = "topcenter")  
   
