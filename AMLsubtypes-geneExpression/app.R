@@ -25,7 +25,9 @@ ui <- fluidPage(
   br(),
   
   h2("About this Shiny App"),
-  p("This Shiny App queries data from the BeatAML project, which includes 615 acute myeloid leukemia (AML) patients. For each patient, BeatAML provides gene expression data (is a gene 'active' or 'inactive') and mutation data (defining genetic subtypes of AML). Using this App, you can query a gene of interest to see whether its expression is different between mutated and unmutated patients of each genetic subtype."),
+  p("Use this interactive app to query a large Acute Myeloid Leukemia (AML) dataset to find out whether genes are active or inactive across subtypes of AML defined by mutations."),
+  br(),
+  p("This app queries data from the BeatAML project, which includes 615 acute myeloid leukemia (AML) patients. For each patient, BeatAML provides gene expression data (is a gene 'active' or 'inactive') and mutation data (which define the genetic subtypes of AML)."),
   br(),
   
   h2("Get started:"),
