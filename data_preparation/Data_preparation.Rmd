@@ -18,7 +18,7 @@ library(lemon)
 knit_print.data.frame <- lemon_print # table rendering
 
 # source custom functions
-source(here("app", "functions.R"))
+source(here("AMLsubtypes-geneExpression", "functions.R"))
 ```
 
 # Background
@@ -364,14 +364,14 @@ stopifnot(setequal(rownames(rna_zscaled_filt), rownames(stat_results)))
 Save the results of this data preparation, to be used in the Shiny App:
 
 ```{r}
-write_rds(rna_normexp_filt, here("app", "data", "rna_normexp_filt.RDS"))
-write_rds(rna_zscaled_filt, here("app", "data", "rna_zscaled_filt.RDS"))
-write_rds(mut_matrix_all, here("app", "data", "mut_matrix_all.RDS"))
-write_rds(stat_results, here("app", "data", "stat_results_mann_whitney_padj.RDS"))
+write_rds(rna_normexp_filt, here("AMLsubtypes-geneExpression", "data", "rna_normexp_filt.RDS"))
+write_rds(rna_zscaled_filt, here("AMLsubtypes-geneExpression", "data", "rna_zscaled_filt.RDS"))
+write_rds(mut_matrix_all, here("AMLsubtypes-geneExpression", "data", "mut_matrix_all.RDS"))
+write_rds(stat_results, here("AMLsubtypes-geneExpression", "data", "stat_results_mann_whitney_padj.RDS"))
 ```
 
 ```{r}
 # save an "autocomplete list" of all the gene names that can be queried
-write_rds(rownames(rna_normexp_filt), here("app", "data", "autocomplete_list.RDS"))
+write_rds(rownames(rna_normexp_filt), here("AMLsubtypes-geneExpression", "data", "autocomplete_list.RDS"))
 ```
 

@@ -2278,12 +2278,12 @@ stopifnot(setequal(rownames(rna_zscaled_filt), rownames(stat_results)))</code></
 <h1>Save results</h1>
 <p>Save the results of this data preparation, to be used in the Shiny
 App:</p>
-<pre class="r"><code>write_rds(rna_normexp_filt, here(&quot;app&quot;, &quot;data&quot;, &quot;rna_normexp_filt.RDS&quot;))
-write_rds(rna_zscaled_filt, here(&quot;app&quot;, &quot;data&quot;, &quot;rna_zscaled_filt.RDS&quot;))
-write_rds(mut_matrix_all, here(&quot;app&quot;, &quot;data&quot;, &quot;mut_matrix_all.RDS&quot;))
-write_rds(stat_results, here(&quot;app&quot;, &quot;data&quot;, &quot;stat_results_mann_whitney_padj.RDS&quot;))</code></pre>
+<pre class="r"><code>write_rds(rna_normexp_filt, here(&quot;AMLsubtypes-geneExpression&quot;, &quot;data&quot;, &quot;rna_normexp_filt.RDS&quot;))
+write_rds(rna_zscaled_filt, here(&quot;AMLsubtypes-geneExpression&quot;, &quot;data&quot;, &quot;rna_zscaled_filt.RDS&quot;))
+write_rds(mut_matrix_all, here(&quot;AMLsubtypes-geneExpression&quot;, &quot;data&quot;, &quot;mut_matrix_all.RDS&quot;))
+write_rds(stat_results, here(&quot;AMLsubtypes-geneExpression&quot;, &quot;data&quot;, &quot;stat_results_mann_whitney_padj.RDS&quot;))</code></pre>
 <pre class="r"><code># save an &quot;autocomplete list&quot; of all the gene names that can be queried
-write_rds(rownames(rna_normexp_filt), here(&quot;app&quot;, &quot;data&quot;, &quot;autocomplete_list.RDS&quot;))</code></pre>
+write_rds(rownames(rna_normexp_filt), here(&quot;AMLsubtypes-geneExpression&quot;, &quot;data&quot;, &quot;autocomplete_list.RDS&quot;))</code></pre>
 </div>
 
 
