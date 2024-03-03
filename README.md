@@ -1,4 +1,4 @@
-# BeatAML genetic subtypes vs. gene expression
+# BeatAML genetic subtypes vs. gene expression Shiny App
 
 ## About
 
@@ -14,20 +14,32 @@ These plots can be used to determine whether a gene is active or inactive in a g
 * A gene that is highly active in a particular genetic subtype could be crucial to the survival of those AML cells. Inactivating the gene using a drug could specifically eliminate the AML cells.
 * A gene that is inactive in a particular genetic subtype be toxic to those AML cells. Activating the gene using a drug could specifically eliminate the AML cells.
 
-## App
+## Run the Shiny App
 
-Use the Shiny App at [https://jennifercrockett.shinyapps.io/amlsubtypes-geneexpression/](https://jennifercrockett.shinyapps.io/amlsubtypes-geneexpression/)
+Run the Shiny App at: [https://jennifercrockett.shinyapps.io/amlsubtypes-geneexpression/](https://jennifercrockett.shinyapps.io/amlsubtypes-geneexpression/)
 
-### Other documentation
+## Documentation
 
-#### Raw data preparation script
+### App source code and data
 
-For documentation purposes, the `./data_preparation/` directory contains raw data preparation script (`Data_preparation.Rmd` and rendered HTML report), which generates the data to power the app.
+The `AMLsubtypes-geneExpression/` directory contains:  
 
-The following raw data files are required to run `Data_preparation.Rmd`, if you wish to re-process the data:  
+* `app.R` script: App source code
+* `data/` directory: Processed data that is called by the app
+* `functions.R` script: Custom functions called by the App source code and Data Preparation script
+* `load_app_data.R` script: Loads the data files from `data/` into the app environment in `app.R`
+* `rsconnect/` directory: Shiny app deployment 
 
-* Clinical Summary: `./raw_data/beataml_wv1to4_clinical.xlsx`
-* WES/targeted Sequencing Mutation Calls: `./raw_data/beataml_wes_wv1to4_mutations_dbgap.txt`
+### Data preparation script
+
+For documentation purposes, the `data_preparation/` directory contains the data preparation script (`Data_preparation.Rmd` and rendered HTML report), which generates the data that powers the app.  
+
+The raw data files are required to run `Data_preparation.Rmd`, if you wish to re-process the data.
+
+### Raw data
+
+* Clinical Summary: `raw_data/beataml_wv1to4_clinical.xlsx`
+* WES/targeted Sequencing Mutation Calls: `raw_data/beataml_wes_wv1to4_mutations_dbgap.txt`
 * Normalized Expression: https://github.com/biodev/beataml2.0_data/raw/main/beataml_waves1to4_norm_exp_dbgap.txt
-  - This file exceeds Github's file size limit, so was not included in the `./raw_data/` directory
-  - It can be downloaded via the provided link, to the `./raw_data/` directory in your clone of the repository
+  - This file exceeds Github's file size limit, so was not included in the `raw_data/` directory
+  - It can be downloaded via the provided link, to the `raw_data/` directory in your clone of the repository
