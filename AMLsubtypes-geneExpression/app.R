@@ -24,10 +24,14 @@ ui <- fluidPage(
   h1("BeatAML genetic subtypes vs. gene expression"),
   br(),
   
-  h2("About this Shiny App"),
-  p("Use this interactive app to query a large Acute Myeloid Leukemia (AML) dataset to find out whether genes are active or inactive across subtypes of AML defined by mutations."),
+  h2("About"),
+  p("This app queries data from the BeatAML project, which includes 615 acute myeloid leukemia (AML) patients. The BeatAML dataset provides gene expression data (is a gene 'active' or 'inactive') and mutation data (defining genetic subtypes of AML). The user queries the gene expression of their gene of interest. The app produces the following plots:"),
+  p("1. A", strong("heatmap"), "showing the BeatAML patients arranged from lowest to highest expression of the gene of interest, with the mutation status of commonly mutated genes in AML for each patient (genetic subtypes). If the gene of interest is expressed significantly higher or lower in mutated vs. unmutated patients for a particular genetic subtype, then the genetic subtype is annotated with the FDR-adjusted Mann-Whitney p-value."),
+  p("2.", strong("Boxplots"), "showing the significant effects from the heatmap plot. The expression of the gene of interest is plotted in the mutated vs. unmutated patients for each genetic subtype of AML that showed a statistically significant difference in gene expression."),
   br(),
-  p("This app queries data from the BeatAML project, which includes 615 acute myeloid leukemia (AML) patients. For each patient, BeatAML provides gene expression data (is a gene 'active' or 'inactive') and mutation data (which define the genetic subtypes of AML)."),
+  p("These plots can be used to determine whether a gene is active or inactive in a genetic subtype of AML. Examples of why researchers are interested in this question:"),
+  p("a. A gene that is highly active in a particular genetic subtype could be crucial to the survival of those AML cells. Inactivating the gene using a drug could specifically eliminate the AML cells."),
+  p("b. A gene that is inactive in a particular genetic subtype be toxic to those AML cells. Activating the gene using a drug could specifically eliminate the AML cells."),
   br(),
   
   h2("Get started:"),
@@ -41,18 +45,34 @@ ui <- fluidPage(
   
   br(),
   h2("Heatmap"),
+  
   plotOutput("heatmap", width = "95%"),
-  helpText("Each column in the heatmap displays the data for one BeatAML patient."),
-  helpText("Top row, 'expression': The patients are arranged from lowest to highest z-scaled expression of the gene of interest."),
-  helpText("Subsequent rows: The mutation status of commonly mutated genes in AML (genetic subtypes) is shown for each patient. If the gene of interest is expressed significantly higher or lower in mutated vs. unmutated patients for a particular genetic subtype, then the genetic subtype is annotated with the FDR-adjusted Mann-Whitney p-value."),
-  helpText("    - If the gene of interest is more highly expressed (more active) in mutated vs. unmutated patients, then the mutated patients (black lines) will be concentrated at the right of the heatmap."),
-  helpText("    - If the gene of interest is more lowly expressed (less active) in mutated vs. unmutated patients, then the mutated patients (black lines) will be concentrated at the left of the heatmap."),
-  helpText("    - If multiple genetic subtypes show a statistically significant result for the gene of interest, you can see whether the mutations tend to co-occur within the same patients (black lines line up vertically)."),
+  
+  checkboxInput(inputId = "show_heatmap_helptext",
+                label = strong("Show heatmap help text"),
+                value = FALSE),
+  
+  conditionalPanel(condition = "input.show_heatmap_helptext == true",
+    helpText("Each column in the heatmap displays the data for one BeatAML patient."),
+    helpText("Top row, 'expression': The patients are arranged from lowest to highest z-scaled expression of the gene of interest."),
+    helpText("Subsequent rows: The mutation status of commonly mutated genes in AML (genetic subtypes) is shown for each patient. If a patient has a mutation in a gene, a dark line is shown. If the gene of interest is expressed significantly higher or lower in mutated vs. unmutated patients for a particular genetic subtype, then the genetic subtype is annotated with the p-value (FDR-adjusted Mann-Whitney U test)."),
+    helpText("    - If the gene of interest is more highly expressed (more active) in mutated vs. unmutated patients, then the mutated patients (dark lines) will be concentrated at the right of the heatmap."),
+    helpText("    - If the gene of interest is more lowly expressed (less active) in mutated vs. unmutated patients, then the mutated patients (dark lines) will be concentrated at the left of the heatmap."),
+    helpText("    - If multiple genetic subtypes show a statistically significant result for the gene of interest, you can see whether the mutations tend to co-occur within the same patients (dark lines line up vertically).")
+    ),
   
   br(),
   h2("Boxplots of significant results"),
+  
   plotOutput("boxplot", width = "95%"),
-  helpText("The boxplots show the significant effects from the heatmap plot above. The expression of the gene of interest is plotted in the mutated vs. unmutated patients for a genetic subtype of AML."),
+  
+  checkboxInput(inputId = "show_boxplots_helptext",
+                label = strong("Show boxplots help text"),
+                value = FALSE),
+  
+  conditionalPanel(condition = "input.show_boxplots_helptext == true",
+    helpText("The boxplots show the significant effects from the heatmap plot above. The expression of the gene of interest is plotted in the mutated vs. unmutated patients for a genetic subtype of AML.")
+    ),
   
   br(),
   h4("Download results"),
